@@ -17,8 +17,13 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildDossier } from './vendor/makefun-game.ts';
 
+/** The game this program hands in: PALMIRA HEAT, an original open-world crime game. */
+const GAME_TITLE = 'PALMIRA HEAT';
+
 const here = fileURLToPath(new URL('.', import.meta.url));
 const out = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
+
+console.log(`${GAME_TITLE}: handing in game/ and screenshots/ from ${here}`);
 
 mkdirSync(out, { recursive: true });
 cpSync(join(here, 'game'), join(out, 'game'), { recursive: true });

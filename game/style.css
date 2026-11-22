@@ -1,0 +1,113 @@
+/* Palmira Heat — screen styling: chunky sun-soaked HUD type that stays readable when the
+   screenshot is shrunk, pastel-on-navy panels echoing the city's palette. */
+
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #1d3557;
+  font-family: "Trebuchet MS", "Segoe UI", Verdana, sans-serif;
+  color: #fff8ec;
+  user-select: none;
+}
+
+#game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+.hidden { display: none !important; }
+#status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+/* ---------- HUD ---------- */
+#hud { position: fixed; inset: 0; pointer-events: none; z-index: 5; }
+
+#objective {
+  position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
+  max-width: 620px; text-align: center;
+  background: rgba(16, 32, 54, 0.78); border: 3px solid #ffca3a; border-radius: 12px;
+  padding: 8px 22px 10px;
+}
+#objective-title { font-size: 13px; letter-spacing: 3px; color: #ffca3a; font-weight: bold; }
+#objective-text { font-size: 21px; font-weight: bold; text-shadow: 2px 2px 0 rgba(0,0,0,0.45); }
+
+#topbar {
+  position: absolute; top: 14px; right: 16px; text-align: right;
+  text-shadow: 2px 2px 0 rgba(0,0,0,0.5);
+}
+#cash { font-size: 30px; font-weight: bold; color: #8ac926; }
+#rep { font-size: 16px; font-weight: bold; color: #ffd9a0; letter-spacing: 1px; }
+#stars { font-size: 30px; letter-spacing: 3px; color: #ffca3a; min-height: 36px; }
+#stars .off { color: rgba(255,255,255,0.25); }
+
+#bottomleft { position: absolute; left: 16px; bottom: 16px; }
+#minimap {
+  display: block; width: 190px; height: 190px; border-radius: 50%;
+  border: 4px solid rgba(16, 32, 54, 0.85); background: #2e9db8;
+  box-shadow: 0 4px 18px rgba(0,0,0,0.4);
+}
+#healthwrap {
+  margin-top: 8px; width: 190px; height: 22px; border-radius: 11px; overflow: hidden;
+  background: rgba(16, 32, 54, 0.8); border: 2px solid rgba(255,248,236,0.65); position: relative;
+}
+#healthbar { height: 100%; width: 100%; background: linear-gradient(90deg, #e63946, #ff924c); transition: width 0.15s; }
+#healthlabel {
+  position: absolute; inset: 0; text-align: center; font-size: 13px; font-weight: bold;
+  letter-spacing: 3px; line-height: 22px; text-shadow: 1px 1px 0 rgba(0,0,0,0.6);
+}
+
+#speedo {
+  position: absolute; right: 22px; bottom: 20px; text-align: center;
+  background: rgba(16, 32, 54, 0.78); border: 3px solid #2ec4b6; border-radius: 50%;
+  width: 104px; height: 104px; line-height: 1;
+}
+#speedo #speednum { display: block; font-size: 40px; font-weight: bold; margin-top: 24px; }
+#speedo small { font-size: 13px; color: #2ec4b6; font-weight: bold; letter-spacing: 1px; }
+
+#prompt {
+  position: absolute; left: 50%; bottom: 150px; transform: translateX(-50%);
+  background: rgba(16, 32, 54, 0.85); border: 2px solid #fff8ec; border-radius: 10px;
+  padding: 8px 18px; font-size: 19px; font-weight: bold;
+}
+
+#dialogue {
+  position: absolute; left: 50%; bottom: 34px; transform: translateX(-50%);
+  width: min(680px, 86vw);
+  background: rgba(16, 32, 54, 0.88); border-left: 8px solid #f15bb5; border-radius: 10px;
+  padding: 12px 18px 14px;
+}
+#dialogue-name { font-size: 14px; font-weight: bold; letter-spacing: 2px; color: #f15bb5; }
+#dialogue-text { font-size: 20px; font-weight: bold; margin-top: 2px; }
+
+#toast {
+  position: absolute; top: 110px; left: 50%; transform: translateX(-50%);
+  font-size: 34px; font-weight: bold; color: #ffca3a; letter-spacing: 1px;
+  text-shadow: 3px 3px 0 rgba(0,0,0,0.55); text-align: center;
+}
+
+#damageflash {
+  position: absolute; inset: 0; background: radial-gradient(ellipse at center, transparent 55%, rgba(230,57,70,0.55) 100%);
+  opacity: 0; transition: opacity 0.1s;
+}
+
+/* ---------- Full-screen menus ---------- */
+#startscreen, #pausescreen, #endscreen {
+  position: fixed; inset: 0; z-index: 10; display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(180deg, rgba(29,53,87,0.25) 0%, rgba(29,53,87,0.72) 78%);
+}
+.title-block { text-align: center; max-width: 720px; padding: 24px; }
+.title-kicker { font-size: 18px; letter-spacing: 8px; font-weight: bold; color: #ffd9a0; text-shadow: 2px 2px 0 rgba(0,0,0,0.5); }
+.title-block h1 {
+  margin: 6px 0 4px; font-size: 84px; line-height: 0.95; letter-spacing: 2px;
+  color: #fff8ec; text-shadow: 5px 5px 0 #e63946, 10px 10px 0 rgba(0,0,0,0.3);
+}
+.title-block h1 span { color: #ffca3a; }
+.tagline { font-size: 24px; font-weight: bold; color: #ffd9a0; text-shadow: 2px 2px 0 rgba(0,0,0,0.55); margin: 8px 0; }
+.story { font-size: 17px; line-height: 1.45; color: #fff8ec; text-shadow: 1px 1px 0 rgba(0,0,0,0.6); }
+.buttons { margin: 22px 0 16px; display: flex; gap: 14px; justify-content: center; }
+.buttons button {
+  pointer-events: auto; cursor: pointer; border: 0; border-radius: 12px;
+  background: #e63946; color: #fff8ec; font: inherit; font-size: 22px; font-weight: bold;
+  padding: 14px 30px; box-shadow: 0 5px 0 #9d1c28, 0 8px 18px rgba(0,0,0,0.4);
+}
+.buttons button:hover { background: #ff5252; }
+.buttons button:active { transform: translateY(3px); box-shadow: 0 2px 0 #9d1c28; }
+#btn-continue { background: #1982c4; box-shadow: 0 5px 0 #0f4d75, 0 8px 18px rgba(0,0,0,0.4); }
+.controls { display: flex; flex-wrap: wrap; gap: 8px 18px; justify-content: center; font-size: 15px; color: #dfeef5; text-shadow: 1px 1px 0 rgba(0,0,0,0.6); }
+.controls b { color: #ffca3a; }

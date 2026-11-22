@@ -1,3 +1,7 @@
+# Local build output from `node main.ts` (the grader writes to /output instead)
 out/
-*.log
+
+# Editor and OS noise
 .DS_Store
+*.log
+Thumbs.db

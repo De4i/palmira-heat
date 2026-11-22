@@ -3,17 +3,83 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Block Dodger</title>
-<style>
-  html, body { margin: 0; height: 100%; overflow: hidden; background: #11141b; }
-  #game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
-  /* Read aloud, never shown: the status line screen readers announce. */
-  #status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-</style>
+<title>PALMIRA HEAT — an open-world crime game</title>
+<link rel="stylesheet" href="./style.css">
 </head>
 <body>
-<canvas id="game" aria-label="Block Dodger: move the paddle left and right to dodge falling blocks and catch coins"></canvas>
+<canvas id="game" aria-label="Palmira Heat: explore the city of Palmira on foot and by car"></canvas>
+
+<!-- In-game HUD: everything the player needs while the world is running. -->
+<div id="hud" class="hidden">
+  <div id="objective" class="hidden">
+    <div id="objective-title">OBJECTIVE</div>
+    <div id="objective-text"></div>
+  </div>
+
+  <div id="topbar">
+    <div id="cash">$0</div>
+    <div id="rep">REP 0</div>
+    <div id="stars" aria-label="wanted level"></div>
+  </div>
+
+  <div id="bottomleft">
+    <canvas id="minimap" width="190" height="190"></canvas>
+    <div id="healthwrap"><div id="healthbar"></div><span id="healthlabel">RICO</span></div>
+  </div>
+
+  <div id="speedo" class="hidden"><span id="speednum">0</span><small>km/h</small></div>
+  <div id="prompt" class="hidden"></div>
+
+  <div id="dialogue" class="hidden">
+    <div id="dialogue-name"></div>
+    <div id="dialogue-text"></div>
+  </div>
+
+  <div id="toast" class="hidden"></div>
+  <div id="damageflash"></div>
+</div>
+
+<!-- Start screen. -->
+<div id="startscreen">
+  <div class="title-block">
+    <div class="title-kicker">WELCOME TO</div>
+    <h1>PALMIRA <span>HEAT</span></h1>
+    <p class="tagline">One city. Eight jobs. Every cop in town.</p>
+    <p class="story">Rico Alvarez just stepped off the boat with empty pockets.
+      Marisol Vega runs Palmira's beachfront crew — and she is hiring a wheelman.</p>
+    <div class="buttons">
+      <button id="btn-start" type="button">▶ NEW GAME</button>
+      <button id="btn-continue" type="button" class="hidden">↻ CONTINUE</button>
+    </div>
+    <div class="controls">
+      <span><b>WASD</b> move / drive</span><span><b>Mouse</b> camera</span>
+      <span><b>E</b> enter / steal car</span><span><b>F / Click</b> punch · shoot</span>
+      <span><b>Shift</b> run</span><span><b>Space</b> handbrake</span><span><b>P</b> pause</span>
+    </div>
+  </div>
+</div>
+
+<!-- Pause overlay. -->
+<div id="pausescreen" class="hidden">
+  <div class="title-block">
+    <h1>PAUSED</h1>
+    <p class="tagline">Palmira waits for no one. Well — just this once.</p>
+    <div class="buttons"><button id="btn-resume" type="button">▶ RESUME</button></div>
+  </div>
+</div>
+
+<!-- Busted / wasted / story-complete overlay. -->
+<div id="endscreen" class="hidden">
+  <div class="title-block">
+    <h1 id="end-title">BUSTED</h1>
+    <p id="end-text" class="tagline"></p>
+    <div class="buttons"><button id="btn-restart" type="button">↻ BACK TO THE BEACH</button></div>
+  </div>
+</div>
+
 <p id="status" role="status" aria-live="polite"></p>
+
+<script src="./vendor/three.min.js"></script>
 <script type="module" src="./src/main.js"></script>
 </body>
 </html>

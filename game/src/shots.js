@@ -1,79 +1,188 @@
-// The screenshot scenes behind ?shot=start|play|end. Each one plays the real rules forward from a
-// fresh world for a fixed number of steps, steered by a simple autopilot (look ahead each way the
-// paddle could move, keep clear of blocks, chase the lowest coin when that is safe), so the frame
-// is what a short game really looks like and the same seed always gives the same frame.
-import { FIELD, PLAYER, STEP } from './config.js';
-import { EVENT_OVER, KIND_BLOCK } from './world.js';
-import { SCREEN_OVER, SCREEN_PLAY, SCREEN_TITLE } from './render.js';
+// Deterministic screenshot scenes behind ?shot=cover|drive|chase|mission&seed=<n>.
+// Each stages the REAL game (same systems, same city the player gets), runs the simulation
+// forward with a scripted input for a fixed number of steps, and frames a camera. Because
+// the world is seeded and the steps are fixed, the same seed always gives the same frame.
 
-const START_SECONDS = 5;
-const PLAY_SECONDS = 26;
-const END_LIMIT_SECONDS = 600;
-/**
- * How far ahead, in seconds, the autopilot checks each way it could move: the play scene's pilot
- * looks well ahead and keeps all its lives; the end scene's looks only a moment ahead, so it is
- * caught out once the blocks speed up, as a hurried player is.
- */
-const HORIZON_PLAY = 0.7;
-const HORIZON_END = 0.25;
-const SAMPLE = 1 / 30;
-const DIRECTIONS = [0, -1, 1];
-/** Extra room, each side, it keeps between the paddle and a block. */
-const MARGIN = 10;
+import { Car } from './vehicles.js';
 
-/** Seconds until moving in `direction` (-1, 0, 1) runs the paddle into a block; Infinity when it never does. */
-function timeToHit(state, direction, horizon) {
-  const player = state.player;
-  for (let t = SAMPLE; t <= horizon; t += SAMPLE) {
-    const x = Math.min(FIELD.width - player.width, Math.max(0, player.x + direction * PLAYER.speed * t));
-    for (let index = 0; index < state.items.length; index += 1) {
-      const item = state.items[index];
-      if (!item.active || item.kind !== KIND_BLOCK) continue;
-      const y = item.y + item.speed * t;
-      if (y + item.height > player.y && y < player.y + player.height && item.x < x + player.width + MARGIN && item.x + item.width > x - MARGIN) return t;
+const FIXED_DT = 1 / 30;
+
+/** Moves a few traffic drivers onto given [x, z, heading, speed] spots near the action. */
+function seedTrafficNear(game, x, z, customSpots = null) {
+  const spots = customSpots ?? [
+    [x - 14, z + 3, Math.PI / 2, 6], [x + 18, z - 3, -Math.PI / 2, 6], [x + 3, z - 20, 0, 6],
+  ];
+  game.traffic.drivers.slice(0, spots.length).forEach((driver, i) => {
+    const [sx, sz, heading, speed] = spots[i];
+    driver.car.position.set(sx, 0, sz);
+    driver.car.heading = heading;
+    driver.car.speed = speed;
+  });
+}
+
+/** Gives the player a fresh car of `paint` at (x, z) and puts him in the driver's seat. */
+function givePlayerCar(game, paint, x, z, heading) {
+  const car = new Car(game.scene, paint, x, z, heading, { kind: 'parked' });
+  game.player.enterCar(game, car);
+  // The staged theft may have been "witnessed": wipe the heat and its toast so the
+  // scene starts from the exact state the scene script intends.
+  game.police.clearHeat();
+  game.hud.clearToast();
+  return car;
+}
+
+const SCENES = {
+  // On foot downtown: HUD, minimap, mission banner and marker all live.
+  cover(game) {
+    game.missions.missionIndex = 1;
+    game.missions.state = 'active';
+    game.missions.stepIndex = 0;
+    game.missions.beginStep(game);
+    game.player.mesh.position.set(-56, 0, 14);
+    game.player.heading = 2.5;
+    seedTrafficNear(game, -48, 0);
+    return {
+      steps: 70,
+      input() {
+        return { forward: 1, strafe: 0, run: false };
+      },
+      placeCamera(g) {
+        const p = g.player.position;
+        g.shotCamera = { pos: { x: p.x - 6.5, y: 3.1, z: p.z + 9.5 }, look: { x: p.x + 6, y: 1.5, z: p.z - 6 } };
+      },
+    };
+  },
+
+  // Driving in traffic along the central east-west road: a lead car in the same lane,
+  // far enough ahead not to be rear-ended, and an oncoming car in the far lane.
+  drive(game) {
+    const car = givePlayerCar(game, 0xe63946, -33, 3.1, Math.PI / 2);
+    car.speed = 15;
+    seedTrafficNear(game, 0, 0, [
+      [8, 3.1, Math.PI / 2, 10],
+      [52, -3.1, -Math.PI / 2, 9],
+    ]);
+    return {
+      steps: 66,
+      input() {
+        return { throttle: 0.75, steer: 0, handbrake: false };
+      },
+      placeCamera(g) {
+        const c = g.player.car;
+        const fx = Math.sin(c.heading);
+        const fz = Math.cos(c.heading);
+        g.shotCamera = {
+          pos: { x: c.position.x - fx * 11.5 - fz * -2.6, y: 3.8, z: c.position.z - fz * 11.5 + fx * -2.6 },
+          look: { x: c.position.x + fx * 14, y: 1.2, z: c.position.z + fz * 14 },
+        };
+      },
+    };
+  },
+
+  // Five-star chase: Rico in the blue sedan, three cruisers in a pursuit wedge right
+  // behind and beside him, roadblocks across the road ahead, the helicopter overhead.
+  // The formation flies in convoy (matched speeds, few fixed steps) and the camera is
+  // locked to the player car, so the frame reads as a chase at any step it lands on.
+  chase(game) {
+    const car = givePlayerCar(game, 0x1982c4, -52, 51.1, Math.PI / 2);
+    car.speed = 16;
+    game.police.setStars(5);
+    // Pursuit wedge in the lanes behind/beside the player car, all aimed down the road:
+    // one cruiser tailgating in the same lane, one on the rear quarter, one pulling
+    // alongside in the next lane. The chase AI steers them at the player, so starting
+    // them behind him keeps their headings (and the formation) stable for the shot.
+    const tail = game.police.spawnCop(car.position);
+    tail.position.set(-59, 0, 51.1);
+    tail.heading = Math.PI / 2;
+    tail.speed = 16.5;
+    const rear = game.police.spawnCop(car.position);
+    rear.position.set(-58, 0, 44.9);
+    rear.heading = Math.PI / 2;
+    rear.speed = 16.5;
+    const flank = game.police.spawnCop(car.position);
+    flank.position.set(-50.5, 0, 44.9);
+    flank.heading = Math.PI / 2;
+    flank.speed = 16.5;
+    // A roadblock across the player's road, far enough ahead to read over the chase.
+    // (The police system adds its own second block by the next intersection on step one,
+    // because this staged one already counts toward its cap of two.)
+    const blockCars = [];
+    for (const z of [44.9, 51.1]) {
+      const blockCar = new Car(game.scene, 0x1d3557, 40, z, 0.35, { police: true, kind: 'police' });
+      blockCars.push(blockCar);
     }
-  }
-  return Infinity;
-}
-
-/** Of the safe ways to move, the one toward the lowest coin (or the centre); else the one that is hit last. */
-function autopilot(state, horizon) {
-  const player = state.player;
-  let coin = null;
-  for (let index = 0; index < state.items.length; index += 1) {
-    const item = state.items[index];
-    if (item.active && item.kind !== KIND_BLOCK && (coin === null || item.y > coin.y)) coin = item;
-  }
-  const target = coin === null ? FIELD.width / 2 : coin.x + coin.width / 2;
-  const centre = player.x + player.width / 2;
-  const wanted = target > centre + 8 ? 1 : target < centre - 8 ? -1 : 0;
-  let best = wanted;
-  let bestTime = timeToHit(state, wanted, horizon);
-  for (let index = 0; index < DIRECTIONS.length && bestTime !== Infinity; index += 1) {
-    const time = timeToHit(state, DIRECTIONS[index], horizon);
-    if (time > bestTime) {
-      bestTime = time;
-      best = DIRECTIONS[index];
+    game.police.roadblocks.push({ cars: blockCars, anchor: { x: 40, z: 48 } });
+    game.police.ensureHelicopter();
+    // Keep the frame clean: send every traffic driver to the far north road and move
+    // pedestrians out of the chase corridor, so nothing civilian wanders into the shot
+    // (a strolling pedestrian in the foreground read as "the player on foot" before).
+    game.traffic.drivers.forEach((driver, i) => {
+      driver.car.position.set(-160 + i * 22, 0, -140.9);
+      driver.car.heading = Math.PI / 2;
+      driver.car.speed = 8;
+      driver.atI = 0;
+      driver.atJ = 0;
+      driver.toI = 1;
+      driver.toJ = 0;
+    });
+    for (const ped of game.pedestrians.citizens) {
+      if (ped.position.x > -95 && ped.position.x < 60 && ped.position.z > 15 && ped.position.z < 85) {
+        ped.position.set(-320, 0, 260);
+        ped.target = { x: -310, z: 260 };
+      }
     }
-  }
-  return best;
-}
+    return {
+      steps: 30,
+      input() {
+        return { throttle: 0.7, steer: 0, handbrake: false };
+      },
+      placeCamera(g) {
+        // The banner has to fit the scene: an escape objective, not the next story job.
+        // (placeCamera runs after the mission system's own banner update each frame,
+        // so this is the text the captured frame shows.)
+        g.hud.setObjective('Lose the Palmira PD!');
+        const c = g.player.car;
+        const fx = Math.sin(c.heading);
+        const fz = Math.cos(c.heading);
+        g.shotCamera = {
+          pos: { x: c.position.x - fx * 19.5 - fz * 2.8, y: 6.6, z: c.position.z - fz * 19.5 + fx * 2.8 },
+          look: { x: c.position.x + fx * 14, y: 1.3, z: c.position.z + fz * 14 },
+        };
+      },
+    };
+  },
+
+  // A mission in progress: the Marina Heist cash pickup, marker, prop and radio dialogue.
+  mission(game) {
+    game.missions.missionIndex = 5;
+    game.missions.state = 'active';
+    game.missions.stepIndex = 0;
+    game.missions.beginStep(game);
+    game.player.mesh.position.set(47, 0, 47);
+    game.player.heading = Math.atan2(56 - 47, 56 - 47);
+    game.hud.showDialogue('MARISOL VEGA', 'The bag is by the warehouse door, Rico. Walk in and take it.', 30);
+    seedTrafficNear(game, 48, 60);
+    return {
+      steps: 46,
+      input() {
+        return { forward: 1, strafe: 0, run: false };
+      },
+      placeCamera(g) {
+        const p = g.player.position;
+        g.shotCamera = { pos: { x: p.x - 8.5, y: 3.6, z: p.z - 8.5 }, look: { x: 58, y: 1.6, z: 58 } };
+      },
+    };
+  },
+};
 
 /**
- * Set `world` to the named scene (start, play or end; any other name is start) and return the
- * screen to draw over it and the best score to show.
+ * Stages the named scene in a freshly built game and returns its controller:
+ * { steps, input(stepIndex) -> per-frame input, placeCamera(game) }.
+ * Unknown names fall back to the cover scene.
  */
-export function stageShot(name, world) {
-  world.reset();
-  if (name !== 'play' && name !== 'end') {
-    for (let index = 0; index < START_SECONDS / STEP; index += 1) world.step(STEP, 0, true);
-    return { screen: SCREEN_TITLE, best: 0 };
-  }
-  const limit = name === 'end' ? END_LIMIT_SECONDS : PLAY_SECONDS;
-  const horizon = name === 'end' ? HORIZON_END : HORIZON_PLAY;
-  for (let index = 0; index < limit / STEP; index += 1) {
-    if (world.step(STEP, autopilot(world.state, horizon), false) & EVENT_OVER) break;
-  }
-  const over = world.state.lives === 0;
-  return { screen: over ? SCREEN_OVER : SCREEN_PLAY, best: world.state.score };
+export function stageShot(name, game) {
+  const scene = SCENES[name] ?? SCENES.cover;
+  return scene(game);
 }
+
+export { FIXED_DT };
